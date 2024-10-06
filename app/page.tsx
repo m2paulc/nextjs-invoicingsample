@@ -1,23 +1,17 @@
 "use client";
 
+// app/invoice/page.tsx
+import React from "react";
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Yup from "yup";
-
-type LineItem = {
-	description: string;
-	quantity: number;
-	price: number;
-};
-
-type InvoiceFormValues = {
-	customerName: string;
-	customerEmail: string;
-	lineItems: LineItem[];
-};
+import { v4 as uuidv4 } from "uuid";
+import { InvoiceFormValues } from "@/app/types/types";
+import { createInvoice } from "@/app/actions/invoices"; // Import the action
 
 // Validation schema
 const schema = Yup.object({
+	invoiceId: Yup.string().required("Invoice ID is required"),
 	customerName: Yup.string().required("Customer name is required"),
 	customerEmail: Yup.string()
 		.email("Invalid email")
@@ -31,10 +25,13 @@ const schema = Yup.object({
 			})
 		)
 		.required("Must have at least one line item")
-		.min(1, "At least one line item is required"), // Ensure at least one item exists
+		.min(1, "At least one line item is required"),
 });
 
 export default function InvoiceForm() {
+	//create the invoice number
+	const newInvoiceId = uuidv4();
+
 	const {
 		register,
 		handleSubmit,
@@ -44,9 +41,10 @@ export default function InvoiceForm() {
 	} = useForm<InvoiceFormValues>({
 		resolver: yupResolver(schema),
 		defaultValues: {
+			invoiceId: newInvoiceId,
 			customerName: "",
 			customerEmail: "",
-			lineItems: [], // Fix: Ensure this is always an empty array initially
+			lineItems: [], // Always initialize with an empty array
 		},
 	});
 
@@ -55,9 +53,19 @@ export default function InvoiceForm() {
 		name: "lineItems",
 	});
 
-	const onSubmit: SubmitHandler<InvoiceFormValues> = (data) => {
-		console.log("Invoice Data:", data);
-		reset(); // Reset after successful submission
+	const onSubmit: SubmitHandler<InvoiceFormValues> = async (data) => {
+		try {
+			// Call the function from the action file
+			const invoice = await createInvoice(data);
+
+			// Reset the form after successful submission
+			reset();
+			alert("Invoice and Line Items successfully created");
+			alert(JSON.stringify(invoice));
+		} catch (error) {
+			console.error("Error submitting the form:", error);
+			alert("An error occurred while creating the invoice");
+		}
 	};
 
 	return (
@@ -65,6 +73,20 @@ export default function InvoiceForm() {
 			<h1 className="text-2xl font-bold mb-6">Create Invoice</h1>
 			<form onSubmit={handleSubmit(onSubmit)}>
 				{/* Main Form */}
+				<div className="mb-4">
+					<label className="block font-medium mb-2">Invoice Number</label>
+					<input
+						type="text"
+						readOnly
+						value={newInvoiceId}
+						// defaultValue={newInvoiceId}
+						{...register("invoiceId")}
+						className="w-full p-2 border rounded"
+					/>
+					{errors.invoiceId && (
+						<p className="text-red-500">{errors.invoiceId.message}</p>
+					)}
+				</div>
 				<div className="mb-4">
 					<label className="block font-medium mb-2">Customer Name</label>
 					<input
