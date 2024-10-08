@@ -1,7 +1,7 @@
 "use client";
 
 // app/invoice/page.tsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useForm, SubmitHandler, useFieldArray } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Yup from "yup";
@@ -29,8 +29,13 @@ const schema = Yup.object({
 });
 
 export default function InvoiceForm() {
-	//create the invoice number
-	const newInvoiceId = uuidv4();
+	// Create state for the invoice number, initialized once
+	const [newInvoiceId, setNewInvoiceId] = useState<string>("");
+
+	// Generate the invoice ID only once when the component mounts
+	useEffect(() => {
+		setNewInvoiceId(uuidv4()); // Only run once when the component mounts
+	}, []);
 
 	const {
 		register,
@@ -41,7 +46,7 @@ export default function InvoiceForm() {
 	} = useForm<InvoiceFormValues>({
 		resolver: yupResolver(schema),
 		defaultValues: {
-			invoiceId: newInvoiceId,
+			invoiceId: newInvoiceId, // Initially empty but will be set when the form mounts
 			customerName: "",
 			customerEmail: "",
 			lineItems: [], // Always initialize with an empty array
@@ -55,8 +60,11 @@ export default function InvoiceForm() {
 
 	const onSubmit: SubmitHandler<InvoiceFormValues> = async (data) => {
 		try {
+			// Ensure that the invoiceId is passed correctly
+			const formData = { ...data, invoiceId: newInvoiceId };
+
 			// Call the function from the action file
-			const invoice = await createInvoice(data);
+			const invoice = await createInvoice(formData);
 
 			// Reset the form after successful submission
 			reset();
@@ -79,7 +87,6 @@ export default function InvoiceForm() {
 						type="text"
 						readOnly
 						value={newInvoiceId}
-						// defaultValue={newInvoiceId}
 						{...register("invoiceId")}
 						className="w-full p-2 border rounded"
 					/>
